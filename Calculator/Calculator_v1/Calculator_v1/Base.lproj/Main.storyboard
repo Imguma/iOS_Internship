@@ -65,6 +65,7 @@
                                                         </userDefinedRuntimeAttributes>
                                                         <connections>
                                                             <action selector="tapClearButton:" destination="zzw-a6-9Pu" eventType="touchUpInside" id="L80-HJ-lbI"/>
+                                                            <action selector="tapReverseButton:" destination="zzw-a6-9Pu" eventType="touchUpInside" id="Dhx-MV-HsJ"/>
                                                         </connections>
                                                     </button>
                                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="DSs-k0-FoE" customClass="RoundButton" customModule="Calculator_v1" customModuleProvider="target">
@@ -82,6 +83,7 @@
                                                         </userDefinedRuntimeAttributes>
                                                         <connections>
                                                             <action selector="tapClearButton:" destination="zzw-a6-9Pu" eventType="touchUpInside" id="6sf-hR-JQE"/>
+                                                            <action selector="tapPercentButton:" destination="zzw-a6-9Pu" eventType="touchUpInside" id="l3e-cY-eW5"/>
                                                         </connections>
                                                     </button>
                                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="j9W-8L-g3r" customClass="RoundButton" customModule="Calculator_v1" customModuleProvider="target">
