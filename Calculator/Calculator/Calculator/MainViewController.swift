@@ -15,17 +15,15 @@ class MainViewController: UIViewController {
 
     @IBOutlet weak var numberOutputLabel: UILabel!  // 계산기 Label에 표시되는 숫자
     
-    var displayNumber = ""  // numberOutputLabel 숫자 표기
-    var firstOperand = ""   // 첫번째 피연산자
-    var secondOperand = ""  // 두번째 피연산자
-    var result = ""         // 결과값
-    var commaNumber = ""    // 콤마 표기를 위한
+    var displayNumber = ""   // numberOutputLabel 표기용 숫자
     var operationNumber = "" // 연산용 숫자
+    var firstOperand = ""    // 첫번째 피연산자
+    var secondOperand = ""   // 두번째 피연산자
+    var result = ""          // 결과값
     var currentOperation: Operation = .unknown  // 연산자 상태 기본값: 미지정
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
         // 스와이프 제스쳐 등록
         let leftSwipeGestureRecognizer = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipes(_:)))
         leftSwipeGestureRecognizer.direction = .left
@@ -36,8 +34,9 @@ class MainViewController: UIViewController {
         // 왼쪽으로 스와이프 하면 뒤에서 부터 한자리씩 사라집니다.
         if (sender.direction == .left) {
             if !self.displayNumber.isEmpty {
-                let swipeNumber = self.operationNumber.dropLast()
-                self.displayNumber = String(swipeNumber)
+                let swipeNumber = self.operationNumber.dropLast()   // 마지막 문자 제거
+                self.operationNumber = String(swipeNumber)
+                self.displayNumber = self.operationNumber
                 printNumberOutputLabel()
             }
         }
@@ -50,17 +49,23 @@ class MainViewController: UIViewController {
      버튼 값을 가져오는 액션함수입니다.
      */
     @IBAction func tapNumberButton(_ sender: UIButton) {
-        
         guard let numberValue = sender.title(for: .normal) else { return }  // 버튼 값 가져오기
         
-        if self.operationNumber.count < 9 {  // 9자리까지만 입력받로록
-            self.displayNumber += numberValue
-            stringToOperationNumber()
-            printNumberOutputLabel()
-        } else {  // 9자리가 넘어가면 경고창 띄움
+        displayNumberToOperationNumber()     // 보여지는 숫자에서 콤마(,) 를 제외한 순수 숫자 구하기
+        
+        if self.operationNumber.count < 9 {  // 긍정(9자리까지만 입력받로록)
+            if self.displayNumber == "0" {   // 긍정(초기에 0입력받으면 -> 0출력해주고 초기화)
+                self.numberOutputLabel.text = self.displayNumber
+                self.displayNumber = ""
+            } else {  // 부정(0이외의 입력이 들어오면 -> 정상출력)
+                self.displayNumber += numberValue
+                displayNumberToOperationNumber()   // 보여지는 숫자에서 콤마(,) 를 제외한 순수 숫자 구하기
+                printNumberOutputLabel()           // Label에 숫자 출력
+            }
+        } else {  // 부정(9자리가 넘어가면 -> 경고창)
             let alert = UIAlertController(title: "경고", message: "9자리 까지만 입력해주세요.", preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "확인", style: .default) { action in
-              return
+                return
             })
             self.present(alert, animated: true, completion: nil)
         }
@@ -71,22 +76,26 @@ class MainViewController: UIViewController {
      */
     @IBAction func tapClearButton(_ sender: UIButton) {
         self.displayNumber = ""
+        self.operationNumber = ""
         self.firstOperand = ""
         self.secondOperand = ""
         self.result = ""
         self.currentOperation = .unknown
         self.numberOutputLabel.text = "0"
-        self.operationNumber = ""
     }
     
     /**
      소수점을 만들어주는 액션함수입니다.
      */
     @IBAction func tapDotButton(_ sender: UIButton) {
-        // 소수점 포함 9자리까지
+        // 소수점 포함 9자리까지만 입력받도록
         if self.operationNumber.count < 8, !self.operationNumber.contains(".") {
-            printDotNumberOuputLabel()
-        } else if self.operationNumber.contains(".") {
+            displayNumberToOperationNumber()    // 보여지는 숫자에서 콤마(,) 를 제외한 순수 숫자 구하기
+            isOverThreeDigits()                 // 만약 3 자리 이상이라면 3 자리수마다 콤마(,) 넣어주기
+            self.displayNumber += self.operationNumber.isEmpty ? "0." : "."   // 소수점 추가
+            self.operationNumber = self.displayNumber
+            self.numberOutputLabel.text = self.displayNumber
+        } else if self.operationNumber.contains(".") {   // 소수점이 있는 상태에서 소수점을 또 추가하면 경고 알림창 띄우기
             let alert = UIAlertController(title: "경고", message: "올바르지 않은 수식입니다.", preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "확인", style: .default) { action in
               return
@@ -95,7 +104,7 @@ class MainViewController: UIViewController {
         }
     }
     
-    /**
+    /**unaryOperation
      각각의 연산자 버튼을 눌렀을 때 호출되는 액션함수입니다.
      */
     @IBAction func tapDivideButton(_ sender: UIButton) {
@@ -134,20 +143,13 @@ class MainViewController: UIViewController {
     
     /**
      연산을 진행하는 operation 함수입니다.
-     > 현재 연산자(currentOperation)가 지정되었는지 확인
-     - 없다면 첫번째 피연산자와 해당 연산자를 저장
-     - 있다면 단항연산자인지 이항연산자인지 체크
-        - 단항연산자 -> unaryOperation 함수 호출
-        - 이항연산자 -> binaryOperation 함수 호출
      */
     func operation(_ operation: Operation) {
         if self.currentOperation != .unknown {  // 현재 연산자가 지정된 상태인지 확인
             if self.currentOperation == .Reverse || self.currentOperation == .Percent {  // 단항 연산자인가?
                 unaryOperation()   // 단항 연산 함수 호출
             } else {  // 단항 연산자가 아니라면 이항 연산자
-                if !self.displayNumber.isEmpty {  // 두번째 피연산자 입력받은 상태인가?
-                    binaryOperation()   // 이항 연산 함수 호출
-                }
+                binaryOperation()
             }
             
             // Double형 값에서 1로 나누어지면 Int형으로 전환
@@ -160,14 +162,13 @@ class MainViewController: UIViewController {
             self.operationNumber = self.result
             self.displayNumber = self.result
             
-            printNumberOutputLabel()
-
-            self.currentOperation = operation  // 현재 연산자 저장
-        } else {
+            printNumberOutputLabel()    // 결과값 출력
+            
+            self.currentOperation = operation    // 현재 연산자 저장
+        } else {   // 피연산자와 연산자 저장
             self.firstOperand = self.operationNumber  // 첫번째 피연산자 저장
-            self.currentOperation = operation       // 선택한 연산자 저장
-            //self.operationNumber = ""                 // 빈 문자열로 초기화
-            self.displayNumber = ""
+            self.currentOperation = operation         // 선택한 연산자 저장
+            self.displayNumber = ""                   // 디스플레이 초기화
         }
     }
     
@@ -175,11 +176,18 @@ class MainViewController: UIViewController {
      이항 연산을 하는 함수입니다.
      */
     func binaryOperation() {
+        displayNumberToOperationNumber()           // 연산용 숫자로 변환
         
-        self.secondOperand = self.operationNumber  // 두번째 피연산자 가져오기
-        self.displayNumber = ""  // 디스플레이 초기화
-        self.operationNumber = ""
+        if !self.displayNumber.isEmpty {  // 긍정(두번째 피연산자가 있다면 -> 입력받은 값을 두번째 피연산자에 저장)
+            self.secondOperand = self.operationNumber
+        } else {  // 부정(두번째 피연산자가 없다면 -> 첫번째 피연산자를 두번째 피연산자에 저장)
+            self.secondOperand = self.firstOperand
+            
+        }
+        self.displayNumber = ""                    // 빈 문자열로 초기화
+        self.operationNumber = ""                  // 빈 문자열로 초기화
         
+        // (String -> Double) 변환
         guard let firstOperand = Double(self.firstOperand) else { return }
         guard let secondOperand = Double(self.secondOperand) else { return }
         
@@ -206,12 +214,17 @@ class MainViewController: UIViewController {
      */
     func unaryOperation() {
         
-        if self.operationNumber.isEmpty {
-            self.firstOperand = self.result    // 누적 연산을 위해 이전 결과값을 가져옴
-        } else {
+        if self.operationNumber.isEmpty {   // 긍정(입력값이 없다면 -> 이전에 연산을 한적이 있거나 연산을 한적이 없는 경우)
+            if !self.result.isEmpty {  // 긍정(결과값이 있다면 -> 누적 연산을 위해 이전 결과값을 피연산자로 가져오기)
+                self.firstOperand = self.result
+            } else {   // 부정(결과값이 없다면 -> 첫 연산이므로
+                self.firstOperand = "0"
+            }
+        } else {  // 부정(입력값이 있다면 -> 피연산자 가져오기)
             self.firstOperand = self.operationNumber
         }
         
+        // (String -> Double) 변환
         guard let firstOperand = Double(self.firstOperand) else { return }
         
         switch self.currentOperation {
@@ -227,6 +240,17 @@ class MainViewController: UIViewController {
     }
     
     /**
+     연산용 숫자로 변환해주는 함수입니다.
+     */
+    func displayNumberToOperationNumber() {
+        if self.displayNumber.contains(",") {   // 긍정(콤마(,)를 포함하고 있다면 -> 연산을 위해 콤마(,) 제거후 할당)
+            self.operationNumber = self.displayNumber.components(separatedBy: [","]).joined()
+        } else {
+            self.operationNumber = self.displayNumber
+        }
+    }
+    
+    /**
      콤마를 추가해주는 함수입니다.
      */
     func numberFormatter(number: Double) -> String {
@@ -235,38 +259,23 @@ class MainViewController: UIViewController {
         
         return numberFormatter.string(from: NSNumber(value: number))!
     }
+
+    /**
+     세자리를 넘어가는지 검사하는 함수입니다.
+     */
+    func isOverThreeDigits() {
+        guard let checkNumber = Double(self.operationNumber) else { return }   // 세자리를 넘어가는지 확인하기 위한 프로퍼티
+        
+        if checkNumber >= 1000 || checkNumber <= -1000 {   // 긍정(천의 자리 이상이면 -> numberFormatter 함수 호출)
+            self.displayNumber = numberFormatter(number: checkNumber)
+        }
+    }
     
     /**
-     계산기에 표시되는 숫자를  출력해주는 함수입니다.
+     Label에 표시되는 숫자를  출력해주는 함수입니다.
      */
     func printNumberOutputLabel() {
-        guard let commaNumber = Double(self.operationNumber) else { return }
-        
-        if commaNumber >= 1000 || commaNumber <= -1000 {   // 긍정(천의 자리가 넘어가면 -> numberFormatter 함수 호출)
-            self.numberOutputLabel.text = numberFormatter(number: commaNumber)
-        } else {  // 부정(그대로 출력)
-            self.numberOutputLabel.text = self.displayNumber
-        }
-    }
-    
-    func printDotNumberOuputLabel() {
-        self.operationNumber = self.displayNumber.components(separatedBy: [","]).joined()
-        guard let commaNumber = Double(self.displayNumber) else { return }
-        
-        if commaNumber >= 1000 || commaNumber <= -1000 {   // 긍정(천의 자리가 넘어가면 -> numberFormatter 함수 호출)
-            self.displayNumber = numberFormatter(number: commaNumber)
-        }
-        self.displayNumber += self.operationNumber.isEmpty ? "0." : "."
-        self.operationNumber = self.displayNumber
-        self.numberOutputLabel.text = self.displayNumber
-    }
-    
-    func stringToOperationNumber() {
-        if self.displayNumber.contains(",") {
-            self.operationNumber = self.displayNumber.components(separatedBy: [","]).joined()
-        } else {
-            self.operationNumber = self.displayNumber
-        }
+        isOverThreeDigits()      // 만약 3 자리 이상이라면 3 자리수마다 콤마(,) 넣어주기
+        self.numberOutputLabel.text = self.displayNumber   // Label에 숫자 출력
     }
 }
-
